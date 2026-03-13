@@ -9,9 +9,24 @@ interface StatsBarProps {
 
 export function StatsBar({ stats, loading }: StatsBarProps) {
   const items = [
-    { label: "Mean Absolute Error", value: `${stats.mae.toLocaleString()} MW`, key: "mae" },
-    { label: "Root Mean Sq. Error", value: `${stats.rmse.toLocaleString()} MW`, key: "rmse" },
-    { label: "Forecast Coverage", value: `${stats.coverage}%`, key: "coverage" },
+    {
+      label: "Mean Absolute Error",
+      value: `${stats.mae.toLocaleString()} MW`,
+      key: "mae",
+      hint: "Avg absolute deviation between actual & forecast",
+    },
+    {
+      label: "Root Mean Sq. Error",
+      value: `${stats.rmse.toLocaleString()} MW`,
+      key: "rmse",
+      hint: "Penalises large errors more than MAE",
+    },
+    {
+      label: "Forecast Coverage",
+      value: `${stats.coverage}%`,
+      key: "coverage",
+      hint: "% of actual points that have a matching forecast",
+    },
   ]
 
   return (
@@ -30,6 +45,7 @@ export function StatsBar({ stats, loading }: StatsBarProps) {
                   {item.label}
                 </p>
                 <p className="text-2xl font-bold text-foreground">{item.value}</p>
+                <p className="text-xs text-muted-foreground mt-1">{item.hint}</p>
               </>
             )}
           </CardContent>

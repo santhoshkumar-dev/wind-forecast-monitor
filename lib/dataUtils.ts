@@ -30,12 +30,14 @@ export function mergeData(
     (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
   )
 
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+
   return sorted.map((actual) => {
     const matched = filterLatestForecast(forecasts, actual.startTime, horizonHours)
     const d = new Date(actual.startTime)
-    const label = `${String(d.getDate()).padStart(2, "0")} ${
-      ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()]
-    } ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+    const label = `${String(d.getUTCDate()).padStart(2, "0")} ${
+      MONTHS[d.getUTCMonth()]
+    } ${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`
 
     return {
       time: label,

@@ -7,11 +7,15 @@ import { Button } from "@/components/ui/button"
 import { CalendarIcon } from "lucide-react"
 import { DateRange } from "react-day-picker"
 
-const JAN_2024_FROM = new Date("2024-01-01")
-const JAN_2024_TO = new Date("2024-01-31")
+// Constrain to Jan 2024 only
+const JAN_MIN = new Date(Date.UTC(2024, 0, 1))
+const JAN_MAX = new Date(Date.UTC(2024, 0, 31))
 
-function formatDate(d: Date) {
-  return `${String(d.getDate()).padStart(2, "0")} Jan 2024`
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun",
+                "Jul","Aug","Sep","Oct","Nov","Dec"]
+
+function fmt(d: Date) {
+  return `${String(d.getUTCDate()).padStart(2, "0")} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`
 }
 
 interface DateRangePickerProps {
@@ -21,10 +25,29 @@ interface DateRangePickerProps {
 
 export function DateRangePicker({ dateRange, onChange }: DateRangePickerProps) {
   const [open, setOpen] = React.useState(false)
+  // local draft while user is picking
+  const [draft, setDraft] = React.useState<DateRange>({
+    from: dateRange.from,
+    to: dateRange.to,
+  })
 
   const handleSelect = (range: DateRange | undefined) => {
-    if (range?.from && range?.to) {
-      onChange({ from: range.from, to: range.to })
+    if (!range) return
+    setDraft(range)
+    if (range.from && range.to) {
+      // Force UTC midnight on whatever the calendar returns
+      const from = new Date(Date.UTC(
+        range.from.getFullYear(),
+        range.from.getMonth(),
+        range.from.getDate()
+      ))
+      const to = new Date(Date.UTC(
+        range.to.getFullYear(),
+        range.to.getMonth(),
+        range.to.getDate(),
+        23, 30, 0   // end of last settlement period of the day
+      ))
+      onChange({ from, to })
       setOpen(false)
     }
   }
@@ -34,20 +57,20 @@ export function DateRangePicker({ dateRange, onChange }: DateRangePickerProps) {
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="w-full sm:w-auto justify-start gap-2 text-sm font-normal"
+          className="w-full sm:w-auto justify-start gap-2 text-sm font-normal min-w-[220px]"
         >
           <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-          {formatDate(dateRange.from)} – {formatDate(dateRange.to)}
+          {fmt(dateRange.from)} – {fmt(dateRange.to)}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar
           mode="range"
-          selected={{ from: dateRange.from, to: dateRange.to }}
+          selected={draft}
           onSelect={handleSelect}
-          defaultMonth={JAN_2024_FROM}
-          fromDate={JAN_2024_FROM}
-          toDate={JAN_2024_TO}
+          defaultMonth={JAN_MIN}
+          fromDate={JAN_MIN}
+          toDate={JAN_MAX}
           numberOfMonths={1}
         />
       </PopoverContent>

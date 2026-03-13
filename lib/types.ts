@@ -1,16 +1,16 @@
 export interface ActualRecord {
-  startTime: string
-  generation: number
+  startTime: string       // ISO datetime, 30-min resolution
+  generation: number      // MW
 }
 
 export interface ForecastRecord {
-  startTime: string
-  publishTime: string
-  generation: number
+  startTime: string       // target time
+  publishTime: string     // when forecast was created
+  generation: number      // MW
 }
 
 export interface ChartDataPoint {
-  time: string
+  time: string            // formatted label for X axis
   actual: number | null
   forecast: number | null
 }

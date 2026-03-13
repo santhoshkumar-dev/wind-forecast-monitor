@@ -43,38 +43,55 @@ export function ForecastChart({ data, loading }: ForecastChartProps) {
     )
   }
 
-  // Sample every Nth point to keep chart readable for large date ranges
-  const step = Math.max(1, Math.floor(data.length / 200))
+  // Downsample to max ~300 points to keep chart fast
+  const step = Math.max(1, Math.floor(data.length / 300))
   const sampled = data.filter((_, i) => i % step === 0)
+
+  const coveragePct = Math.round(
+    (sampled.filter((d) => d.forecast !== null).length / sampled.length) * 100
+  )
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-base font-semibold">Generation (MW)</CardTitle>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-semibold">
+          Generation (MW)
+          {coveragePct > 0 && (
+            <span className="ml-2 text-xs font-normal text-muted-foreground">
+              — forecast matched {coveragePct}% of points
+            </span>
+          )}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={400}>
-          <LineChart data={sampled} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
-            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+          <LineChart
+            data={sampled}
+            margin={{ top: 4, right: 16, left: 0, bottom: 24 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
             <XAxis
               dataKey="time"
-              tick={{ fontSize: 11 }}
+              tick={{ fontSize: 10 }}
               interval={Math.max(0, Math.floor(sampled.length / 8) - 1)}
               angle={-30}
               textAnchor="end"
-              height={50}
+              height={55}
             />
             <YAxis
               tick={{ fontSize: 11 }}
-              tickFormatter={(v) => `${v.toLocaleString()}`}
-              width={70}
+              tickFormatter={(v) => v.toLocaleString()}
+              width={72}
+              domain={["auto", "auto"]}
             />
             <Tooltip
               formatter={(value: number | null, name: string) => [
-                value !== null ? `${value.toLocaleString()} MW` : "—",
+                value !== null && value !== undefined
+                  ? `${Number(value).toLocaleString()} MW`
+                  : "—",
                 name === "actual" ? "Actual" : "Forecast",
               ]}
-              labelFormatter={(label) => `Time: ${label}`}
+              labelFormatter={(label) => `🕐 ${label}`}
               contentStyle={{
                 backgroundColor: "hsl(var(--card))",
                 border: "1px solid hsl(var(--border))",
@@ -83,7 +100,9 @@ export function ForecastChart({ data, loading }: ForecastChartProps) {
               }}
             />
             <Legend
-              formatter={(value) => (value === "actual" ? "Actual" : "Forecast")}
+              formatter={(value) =>
+                value === "actual" ? "Actual" : "Forecast"
+              }
             />
             <Line
               type="monotone"
@@ -92,6 +111,7 @@ export function ForecastChart({ data, loading }: ForecastChartProps) {
               strokeWidth={2}
               dot={false}
               connectNulls={false}
+              isAnimationActive={false}
               name="actual"
             />
             <Line
@@ -102,6 +122,7 @@ export function ForecastChart({ data, loading }: ForecastChartProps) {
               strokeDasharray="4 2"
               dot={false}
               connectNulls={false}
+              isAnimationActive={false}
               name="forecast"
             />
           </LineChart>
