@@ -26,6 +26,8 @@ const MONTHS = [
   "Dec",
 ];
 
+const MAX_RANGE_DAYS = 30;
+
 function fmt(d: Date) {
   return `${String(d.getDate()).padStart(2, "0")} ${
     MONTHS[d.getMonth()]
@@ -37,21 +39,53 @@ interface DateRangePickerProps {
   onChange: (range: { from: Date; to: Date }) => void;
 }
 
+function diffDays(a: Date, b: Date) {
+  const ms = Math.abs(b.getTime() - a.getTime());
+  return ms / (1000 * 60 * 60 * 24);
+}
+
 export function DateRangePicker({ dateRange, onChange }: DateRangePickerProps) {
   const [open, setOpen] = React.useState(false);
-  const [draft, setDraft] = React.useState<DateRange | undefined>();
+  const [draft, setDraft] = React.useState<DateRange | undefined>(dateRange);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  React.useEffect(() => {
+    if (dateRange) setDraft(dateRange);
+  }, [dateRange]);
 
   const handleSelect = (range: DateRange | undefined) => {
-    setDraft(range);
+    if (!range) return;
 
-    if (
-      range?.from &&
-      range?.to &&
-      range.from.getTime() !== range.to.getTime()
-    ) {
+    // only start date selected
+    if (range.from && !range.to) {
+      setDraft(range);
+      return;
+    }
+
+    if (range.from && range.to) {
+      // clicking same day should just set start date
+      if (range.from.getTime() === range.to.getTime()) {
+        setDraft({ from: range.from, to: undefined });
+        return;
+      }
+
+      const days = diffDays(range.from, range.to);
+
+      if (days > MAX_RANGE_DAYS) {
+        setDraft({ from: range.to, to: undefined });
+        return;
+      }
+
+      setDraft(range);
       onChange({ from: range.from, to: range.to });
       setOpen(false);
     }
+  };
+
+  const clear = () => {
+    setDraft(undefined);
   };
 
   return (
@@ -70,11 +104,18 @@ export function DateRangePicker({ dateRange, onChange }: DateRangePickerProps) {
       </PopoverTrigger>
 
       <PopoverContent className="w-auto p-0" align="start">
+        <div className="p-3 border-b flex justify-end">
+          <Button variant="ghost" size="sm" onClick={clear}>
+            Clear
+          </Button>
+        </div>
+
         <Calendar
           mode="range"
           selected={draft}
           onSelect={handleSelect}
           numberOfMonths={2}
+          disabled={{ after: today }}
         />
       </PopoverContent>
     </Popover>
