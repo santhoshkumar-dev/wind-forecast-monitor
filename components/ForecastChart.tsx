@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import React from "react"
+import React from "react";
 import {
   LineChart,
   Line,
@@ -10,29 +10,35 @@ import {
   ResponsiveContainer,
   Tooltip,
   Legend,
-} from "recharts"
-import { ChartDataPoint } from "@/lib/types"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { downsample } from "@/lib/downsample"
+} from "recharts";
+
+import {
+  ValueType,
+  NameType,
+} from "recharts/types/component/DefaultTooltipContent";
+
+import { ChartDataPoint } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { downsample } from "@/lib/downsample";
 
 interface ForecastChartProps {
-  data: ChartDataPoint[]
-  loading: boolean
+  data: ChartDataPoint[];
+  loading: boolean;
 }
 
 export function ForecastChart({ data, loading }: ForecastChartProps) {
-  // Memoized LTTB-style downsample — only recalculates when data changes
-  const sampled = React.useMemo(() => downsample(data ?? [], 400), [data])
+  // Memoized downsample
+  const sampled = React.useMemo(() => downsample(data ?? [], 400), [data]);
 
-  // Memoized tooltip formatter — prevents inline fn recreation on every render
+  // Correctly typed tooltip formatter
   const tooltipFormatter = React.useCallback(
-    (value: number | null, name: string) => [
-      value != null ? `${Number(value).toLocaleString()} MW` : "\u2014",
+    (value: ValueType, name: NameType) => [
+      value != null ? `${Number(value).toLocaleString()} MW` : "—",
       name === "actual" ? "Actual" : "Forecast",
     ],
-    []
-  )
+    [],
+  );
 
   if (loading) {
     return (
@@ -44,7 +50,7 @@ export function ForecastChart({ data, loading }: ForecastChartProps) {
           <Skeleton className="h-[400px] w-full" />
         </CardContent>
       </Card>
-    )
+    );
   }
 
   if (!data || data.length === 0) {
@@ -54,12 +60,16 @@ export function ForecastChart({ data, loading }: ForecastChartProps) {
           No data available for the selected range.
         </CardContent>
       </Card>
-    )
+    );
   }
 
-  const coveragePct = Math.round(
-    (sampled.filter((d) => d.forecast !== null).length / sampled.length) * 100
-  )
+  const coveragePct =
+    sampled.length > 0
+      ? Math.round(
+          (sampled.filter((d) => d.forecast !== null).length / sampled.length) *
+            100,
+        )
+      : 0;
 
   return (
     <Card>
@@ -68,11 +78,12 @@ export function ForecastChart({ data, loading }: ForecastChartProps) {
           Generation (MW)
           {coveragePct > 0 && (
             <span className="ml-2 text-xs font-normal text-muted-foreground">
-              \u2014 forecast matched {coveragePct}% of points
+              — forecast matched {coveragePct}% of points
             </span>
           )}
         </CardTitle>
       </CardHeader>
+
       <CardContent>
         <ResponsiveContainer width="100%" height={400}>
           <LineChart
@@ -81,6 +92,7 @@ export function ForecastChart({ data, loading }: ForecastChartProps) {
             margin={{ top: 4, right: 16, left: 0, bottom: 24 }}
           >
             <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+
             <XAxis
               dataKey="time"
               tick={{ fontSize: 10 }}
@@ -89,15 +101,17 @@ export function ForecastChart({ data, loading }: ForecastChartProps) {
               textAnchor="end"
               height={55}
             />
+
             <YAxis
               tick={{ fontSize: 11 }}
-              tickFormatter={(v) => v.toLocaleString()}
+              tickFormatter={(v) => Number(v).toLocaleString()}
               width={72}
               domain={["auto", "auto"]}
             />
+
             <Tooltip
               formatter={tooltipFormatter}
-              labelFormatter={(label) => `\uD83D\uDD50 ${label}`}
+              labelFormatter={(label) => `🕐 ${label}`}
               contentStyle={{
                 backgroundColor: "hsl(var(--card))",
                 border: "1px solid hsl(var(--border))",
@@ -105,11 +119,13 @@ export function ForecastChart({ data, loading }: ForecastChartProps) {
                 fontSize: "12px",
               }}
             />
+
             <Legend
               formatter={(value) =>
                 value === "actual" ? "Actual" : "Forecast"
               }
             />
+
             <Line
               type="monotone"
               dataKey="actual"
@@ -120,6 +136,7 @@ export function ForecastChart({ data, loading }: ForecastChartProps) {
               isAnimationActive={false}
               name="actual"
             />
+
             <Line
               type="monotone"
               dataKey="forecast"
@@ -135,5 +152,5 @@ export function ForecastChart({ data, loading }: ForecastChartProps) {
         </ResponsiveContainer>
       </CardContent>
     </Card>
-  )
+  );
 }
