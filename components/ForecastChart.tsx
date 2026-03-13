@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import {
   LineChart,
   Line,
@@ -13,6 +14,7 @@ import {
 import { ChartDataPoint } from "@/lib/types"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { downsample } from "@/lib/downsample"
 
 interface ForecastChartProps {
   data: ChartDataPoint[]
@@ -20,6 +22,18 @@ interface ForecastChartProps {
 }
 
 export function ForecastChart({ data, loading }: ForecastChartProps) {
+  // Memoized LTTB-style downsample — only recalculates when data changes
+  const sampled = React.useMemo(() => downsample(data ?? [], 400), [data])
+
+  // Memoized tooltip formatter — prevents inline fn recreation on every render
+  const tooltipFormatter = React.useCallback(
+    (value: number | null, name: string) => [
+      value != null ? `${Number(value).toLocaleString()} MW` : "\u2014",
+      name === "actual" ? "Actual" : "Forecast",
+    ],
+    []
+  )
+
   if (loading) {
     return (
       <Card>
@@ -43,10 +57,6 @@ export function ForecastChart({ data, loading }: ForecastChartProps) {
     )
   }
 
-  // Downsample to max ~300 points to keep chart fast
-  const step = Math.max(1, Math.floor(data.length / 300))
-  const sampled = data.filter((_, i) => i % step === 0)
-
   const coveragePct = Math.round(
     (sampled.filter((d) => d.forecast !== null).length / sampled.length) * 100
   )
@@ -58,7 +68,7 @@ export function ForecastChart({ data, loading }: ForecastChartProps) {
           Generation (MW)
           {coveragePct > 0 && (
             <span className="ml-2 text-xs font-normal text-muted-foreground">
-              — forecast matched {coveragePct}% of points
+              \u2014 forecast matched {coveragePct}% of points
             </span>
           )}
         </CardTitle>
@@ -67,6 +77,7 @@ export function ForecastChart({ data, loading }: ForecastChartProps) {
         <ResponsiveContainer width="100%" height={400}>
           <LineChart
             data={sampled}
+            syncId="forecast"
             margin={{ top: 4, right: 16, left: 0, bottom: 24 }}
           >
             <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
@@ -85,13 +96,8 @@ export function ForecastChart({ data, loading }: ForecastChartProps) {
               domain={["auto", "auto"]}
             />
             <Tooltip
-              formatter={(value: number | null, name: string) => [
-                value !== null && value !== undefined
-                  ? `${Number(value).toLocaleString()} MW`
-                  : "—",
-                name === "actual" ? "Actual" : "Forecast",
-              ]}
-              labelFormatter={(label) => `🕐 ${label}`}
+              formatter={tooltipFormatter}
+              labelFormatter={(label) => `\uD83D\uDD50 ${label}`}
               contentStyle={{
                 backgroundColor: "hsl(var(--card))",
                 border: "1px solid hsl(var(--border))",
