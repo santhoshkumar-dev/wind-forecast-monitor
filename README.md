@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🌬️ Wind Forecast Monitor
+
+A full-stack Next.js web application that visualizes UK national wind power generation by comparing **actual vs. forecasted** values using live data from the [Elexon BMRS API](https://developer.data.elexon.co.uk/).
+
+## Features
+
+- 📅 Date range picker constrained to January 2024
+- 🎚️ Forecast horizon slider (0–48 hours) with client-side re-merge (no extra API calls)
+- 📊 Recharts line chart — actual (blue) vs forecast (green dashed)
+- 📐 Stats bar: MAE, RMSE, and forecast coverage
+- 🌙 Dark mode via Tailwind `dark:` classes
+- 💀 Skeleton loading states
+- ⚠️ Friendly error card on API failure
+
+## Folder Structure
+
+```
+/app
+  /api
+    /actuals/route.ts     # Proxies Elexon FUELHH, filters WIND
+    /forecasts/route.ts   # Proxies Elexon WINDFOR, filters 0–48h horizon
+  layout.tsx
+  page.tsx                # Main client page
+/components
+  ForecastChart.tsx       # Recharts line chart
+  DateRangePicker.tsx     # shadcn Calendar in range mode
+  HorizonSlider.tsx       # shadcn Slider
+  StatsBar.tsx            # MAE / RMSE / Coverage cards
+/lib
+  dataUtils.ts            # filterLatestForecast, mergeData, computeStats
+  types.ts                # TypeScript interfaces
+```
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Required shadcn components
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+If not already installed, run:
 
-## Learn More
+```bash
+npx shadcn@latest add chart slider card calendar badge skeleton tooltip popover button
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Environment Variables
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+No environment variables are required. The Elexon BMRS API is public and does not need an API key.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Live App
 
-## Deploy on Vercel
+[<VERCEL_URL>](https://your-app.vercel.app)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+> Built with assistance from AI tools for scaffolding.
