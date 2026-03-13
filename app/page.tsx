@@ -1,83 +1,91 @@
-"use client"
+"use client";
 
-import { useEffect, useState, useCallback, useRef } from "react"
-import { ActualRecord, ForecastRecord, ChartDataPoint } from "@/lib/types"
-import { mergeData, computeStats } from "@/lib/dataUtils"
-import { ForecastChart } from "@/components/ForecastChart"
-import { DateRangePicker } from "@/components/DateRangePicker"
-import { HorizonSlider } from "@/components/HorizonSlider"
-import { StatsBar } from "@/components/StatsBar"
-import { Card, CardContent } from "@/components/ui/card"
-import { AlertCircle } from "lucide-react"
+import { useEffect, useState, useCallback, useRef } from "react";
+import { ActualRecord, ForecastRecord, ChartDataPoint } from "@/lib/types";
+import { mergeData, computeStats } from "@/lib/dataUtils";
+import { ForecastChart } from "@/components/ForecastChart";
+import { DateRangePicker } from "@/components/DateRangePicker";
+import { HorizonSlider } from "@/components/HorizonSlider";
+import { StatsBar } from "@/components/StatsBar";
+import { Card, CardContent } from "@/components/ui/card";
+import { AlertCircle } from "lucide-react";
 
 // Force UTC midnight so dates are always 2024-01-xx
 function utcDate(year: number, month: number, day: number): Date {
-  return new Date(Date.UTC(year, month, day, 0, 0, 0, 0))
+  return new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
 }
 
-const DEFAULT_FROM = utcDate(2024, 0, 1)   // 2024-01-01T00:00:00Z
-const DEFAULT_TO   = utcDate(2024, 0, 7)   // 2024-01-07T00:00:00Z (1 week default for speed)
+const DEFAULT_FROM = utcDate(2024, 0, 1); // 2024-01-01T00:00:00Z
+const DEFAULT_TO = new Date(Date.UTC(2024, 0, 7, 23, 30, 0)); // 2024-01-07T23:30:00Z — last settlement period
 
 export default function HomePage() {
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
     from: DEFAULT_FROM,
     to: DEFAULT_TO,
-  })
-  const [horizonHours, setHorizonHours] = useState(4)
-  const [actuals, setActuals] = useState<ActualRecord[]>([])
-  const [forecasts, setForecasts] = useState<ForecastRecord[]>([])
-  const [chartData, setChartData] = useState<ChartDataPoint[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  });
+  const [horizonHours, setHorizonHours] = useState(0);
+  const [actuals, setActuals] = useState<ActualRecord[]>([]);
+  const [forecasts, setForecasts] = useState<ForecastRecord[]>([]);
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   // Track last fetched range to avoid redundant fetches
-  const lastFetched = useRef<string>("")
+  const lastFetched = useRef<string>("");
 
   const fetchData = useCallback(async () => {
-    const from = dateRange.from.toISOString()
-    const to = dateRange.to.toISOString()
-    const key = `${from}|${to}`
-    if (key === lastFetched.current) return
-    lastFetched.current = key
+    // Strip milliseconds so URLs are clean and consistent (Elexon expects no ms)
+    console.log(dateRange);
+    const from = dateRange.from.toISOString().replace(/\.\d{3}Z$/, "Z");
+    const to = dateRange.to.toISOString().replace(/\.\d{3}Z$/, "Z");
+    const key = `${from}|${to}`;
+    if (key === lastFetched.current) return;
+    lastFetched.current = key;
 
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
       const [actualsRes, forecastsRes] = await Promise.all([
-        fetch(`/api/actuals?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
-        fetch(`/api/forecasts?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
-      ])
+        fetch(
+          `/api/actuals?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+        ),
+        fetch(
+          `/api/forecasts?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+        ),
+      ]);
 
       if (!actualsRes.ok || !forecastsRes.ok) {
-        throw new Error("Failed to fetch data from the Elexon API")
+        throw new Error("Failed to fetch data from the Elexon API");
       }
 
       const [actualsData, forecastsData]: [ActualRecord[], ForecastRecord[]] =
-        await Promise.all([actualsRes.json(), forecastsRes.json()])
+        await Promise.all([actualsRes.json(), forecastsRes.json()]);
 
-      setActuals(actualsData)
-      setForecasts(forecastsData)
+      setActuals(actualsData);
+      setForecasts(forecastsData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An unexpected error occurred")
+      setError(
+        err instanceof Error ? err.message : "An unexpected error occurred",
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [dateRange])
+  }, [dateRange]);
 
   useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    fetchData();
+  }, [fetchData]);
 
   // Re-merge whenever raw data or horizon changes — no extra fetch needed
   useEffect(() => {
     if (actuals.length > 0) {
-      setChartData(mergeData(actuals, forecasts, horizonHours))
+      setChartData(mergeData(actuals, forecasts, horizonHours));
     } else {
-      setChartData([])
+      setChartData([]);
     }
-  }, [actuals, forecasts, horizonHours])
+  }, [actuals, forecasts, horizonHours]);
 
-  const stats = computeStats(chartData)
+  const stats = computeStats(chartData);
 
   return (
     <main className="min-h-screen bg-background">
@@ -117,5 +125,5 @@ export default function HomePage() {
         </div>
       </div>
     </main>
-  )
+  );
 }

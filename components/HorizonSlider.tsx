@@ -9,11 +9,13 @@ interface HorizonSliderProps {
 }
 
 export function HorizonSlider({ value, onChange }: HorizonSliderProps) {
+  const label = value === 0 ? "All" : `${value}h`
+
   return (
     <div className="flex flex-col gap-2 w-full sm:w-72">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-foreground">Forecast Horizon</span>
-        <Badge variant="secondary">{value}h</Badge>
+        <Badge variant="secondary">{label}</Badge>
       </div>
       <Slider
         min={0}
@@ -24,9 +26,14 @@ export function HorizonSlider({ value, onChange }: HorizonSliderProps) {
         className="w-full"
       />
       <div className="flex justify-between text-xs text-muted-foreground">
-        <span>0h</span>
-        <span>48h</span>
+        <span>All</span>
+        <span>48h ahead</span>
       </div>
+      <p className="text-xs text-muted-foreground leading-tight">
+        {value === 0
+          ? "Showing latest available forecast for each period"
+          : `Only forecasts published ≥ ${value}h before settlement`}
+      </p>
     </div>
   )
 }

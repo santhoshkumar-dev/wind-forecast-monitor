@@ -1,21 +1,34 @@
 import { ActualRecord, ForecastRecord, ChartDataPoint, Stats } from "./types"
 
+/**
+ * For each actual settlement period, find the best matching forecast:
+ * - The forecast must have been published AT LEAST horizonHours before the actual's startTime
+ * - Among qualifying forecasts, prefer the one whose startTime is closest to the actual's startTime
+ *   (WINDFOR is hourly, FUELHH is 30-min, so we round to the nearest hour)
+ * - Among forecasts with the same startTime match, pick the most recently published
+ */
 export function filterLatestForecast(
   forecasts: ForecastRecord[],
-  targetTime: string,
+  actualStartTime: string,
   horizonHours: number
 ): ForecastRecord | null {
-  const targetMs = new Date(targetTime).getTime()
+  const targetMs = new Date(actualStartTime).getTime()
   const horizonMs = horizonHours * 60 * 60 * 1000
-  const cutoff = targetMs - horizonMs
+  const publishCutoff = targetMs - horizonMs
 
+  // Round the actual's startTime to the nearest hour to match WINDFOR hourly steps
+  const roundedMs = Math.round(targetMs / (60 * 60 * 1000)) * (60 * 60 * 1000)
+
+  // Only keep forecasts that were published early enough, and whose startTime rounds to the same hour
   const valid = forecasts.filter((f) => {
     const publishMs = new Date(f.publishTime).getTime()
-    return publishMs <= cutoff
+    const forecastMs = new Date(f.startTime).getTime()
+    return publishMs <= publishCutoff && forecastMs === roundedMs
   })
 
   if (valid.length === 0) return null
 
+  // Pick the most recently published among matching forecasts
   return valid.reduce((latest, f) =>
     new Date(f.publishTime) > new Date(latest.publishTime) ? f : latest
   )

@@ -4,17 +4,8 @@ import { NextRequest, NextResponse } from "next/server"
 interface ElexonWindForRecord {
   startTime?: string
   publishTime?: string
-  // Some versions use these alternative names
-  targetTime?: string
-  createdDateTime?: string
-  generationMW?: number
   generation?: number
-  quantity?: number
   [key: string]: unknown
-}
-
-function toElexonDate(iso: string): string {
-  return new Date(iso).toISOString().replace(/\.\d{3}Z$/, "Z")
 }
 
 export async function GET(req: NextRequest) {
@@ -28,8 +19,10 @@ export async function GET(req: NextRequest) {
 
   try {
     const url = new URL("https://data.elexon.co.uk/bmrs/api/v1/datasets/WINDFOR/stream")
-    url.searchParams.set("from", toElexonDate(from))
-    url.searchParams.set("to", toElexonDate(to))
+    // Elexon WINDFOR stream uses publishDateTimeFrom/To to filter by when the forecast was published.
+    // We use the selected date range as the publish window to get forecasts for that period.
+    url.searchParams.set("publishDateTimeFrom", from.replace(/\.\d{3}Z$/, "Z"))
+    url.searchParams.set("publishDateTimeTo", to.replace(/\.\d{3}Z$/, "Z"))
 
     const res = await fetch(url.toString(), {
       headers: { Accept: "application/json" },
@@ -49,26 +42,17 @@ export async function GET(req: NextRequest) {
     const data = Array.isArray(raw) ? raw : []
 
     const filtered = data
-      .map((r) => {
-        // Normalise field names — Elexon uses different names across versions
-        const startTime = r.startTime ?? r.targetTime ?? ""
-        const publishTime = r.publishTime ?? r.createdDateTime ?? ""
-        const generation =
-          typeof r.generation === "number"
-            ? r.generation
-            : typeof r.generationMW === "number"
-            ? r.generationMW
-            : typeof r.quantity === "number"
-            ? r.quantity
-            : null
-
-        return { startTime, publishTime, generation }
-      })
+      .map((r) => ({
+        startTime: r.startTime ?? "",
+        publishTime: r.publishTime ?? "",
+        generation: typeof r.generation === "number" ? r.generation : null,
+      }))
       .filter((r) => {
         if (!r.startTime || !r.publishTime || r.generation === null) return false
         const start = new Date(r.startTime).getTime()
         const publish = new Date(r.publishTime).getTime()
         const horizonHours = (start - publish) / (1000 * 60 * 60)
+        // Keep only forward-looking forecasts up to 48h ahead
         return horizonHours >= 0 && horizonHours <= 48
       })
 

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 
-// Elexon field names observed in FUELHH stream response
+// Elexon FUELHH field names
 interface ElexonFuelHHRecord {
   startTime?: string
+  publishTime?: string
   settlementDate?: string
   settlementPeriod?: number
   fuelType?: string
@@ -10,9 +11,14 @@ interface ElexonFuelHHRecord {
   [key: string]: unknown
 }
 
-function toElexonDate(iso: string): string {
-  // Elexon expects: 2024-01-01T00:00:00Z (no ms)
-  return new Date(iso).toISOString().replace(/\.\d{3}Z$/, "Z")
+/**
+ * FUELHH stream filters by publishTime, not startTime.
+ * publishTime is ~30 min ahead of startTime (data is finalized after the period ends).
+ * So to get actuals for startTime in [from, to], query publishTime in [from+30m, to+30m].
+ */
+function addMinutes(iso: string, minutes: number): string {
+  const ms = new Date(iso).getTime() + minutes * 60 * 1000
+  return new Date(ms).toISOString().replace(/\.\d{3}Z$/, "Z")
 }
 
 export async function GET(req: NextRequest) {
@@ -26,8 +32,11 @@ export async function GET(req: NextRequest) {
 
   try {
     const url = new URL("https://data.elexon.co.uk/bmrs/api/v1/datasets/FUELHH/stream")
-    url.searchParams.set("from", toElexonDate(from))
-    url.searchParams.set("to", toElexonDate(to))
+    // Elexon FUELHH uses publishDateTimeFrom/To, not from/to.
+    // publishTime lags startTime by ~30min, so offset accordingly.
+    url.searchParams.set("publishDateTimeFrom", addMinutes(from, 30))
+    url.searchParams.set("publishDateTimeTo", addMinutes(to, 30))
+    url.searchParams.set("fuelType", "WIND")
 
     const res = await fetch(url.toString(), {
       headers: { Accept: "application/json" },
@@ -47,7 +56,6 @@ export async function GET(req: NextRequest) {
     const data = Array.isArray(raw) ? raw : []
 
     const filtered = data
-      .filter((r) => r.fuelType === "WIND")
       .map((r) => ({
         startTime: r.startTime ?? "",
         generation: typeof r.generation === "number" ? r.generation : 0,

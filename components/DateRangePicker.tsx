@@ -7,12 +7,12 @@ import { Button } from "@/components/ui/button"
 import { CalendarIcon } from "lucide-react"
 import { DateRange } from "react-day-picker"
 
-// Constrain to Jan 2024 only
-const JAN_MIN = new Date(Date.UTC(2024, 0, 1))
-const JAN_MAX = new Date(Date.UTC(2024, 0, 31))
+// Elexon BMRS data is available from 2024-01-01 up to today
+const MIN_DATE = new Date(Date.UTC(2024, 0, 1))
+const MAX_DATE = new Date() // today
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun",
-                "Jul","Aug","Sep","Oct","Nov","Dec"]
+                 "Jul","Aug","Sep","Oct","Nov","Dec"]
 
 function fmt(d: Date) {
   return `${String(d.getUTCDate()).padStart(2, "0")} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`
@@ -25,11 +25,16 @@ interface DateRangePickerProps {
 
 export function DateRangePicker({ dateRange, onChange }: DateRangePickerProps) {
   const [open, setOpen] = React.useState(false)
-  // local draft while user is picking
+  // local draft while user is picking — keep in sync with parent prop
   const [draft, setDraft] = React.useState<DateRange>({
     from: dateRange.from,
     to: dateRange.to,
   })
+
+  // Re-sync draft whenever the committed range changes from outside
+  React.useEffect(() => {
+    setDraft({ from: dateRange.from, to: dateRange.to })
+  }, [dateRange.from, dateRange.to])
 
   const handleSelect = (range: DateRange | undefined) => {
     if (!range) return
@@ -68,10 +73,10 @@ export function DateRangePicker({ dateRange, onChange }: DateRangePickerProps) {
           mode="range"
           selected={draft}
           onSelect={handleSelect}
-          defaultMonth={JAN_MIN}
-          fromDate={JAN_MIN}
-          toDate={JAN_MAX}
-          numberOfMonths={1}
+          defaultMonth={dateRange.from}
+          fromDate={MIN_DATE}
+          toDate={MAX_DATE}
+          numberOfMonths={2}
         />
       </PopoverContent>
     </Popover>
